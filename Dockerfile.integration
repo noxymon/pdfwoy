@@ -28,8 +28,11 @@ COPY tsconfig.json tsup.config.ts ./
 COPY src/ ./src/
 RUN pnpm build
 
-# Test fixture and test runner
-COPY test.pdf ./test/fixtures/test.pdf
+# Generate a minimal test fixture PDF from PostScript
+RUN mkdir -p test/fixtures && \
+    printf '%%!PS\n/Helvetica findfont 14 scalefont setfont\n72 720 moveto\n(pdftools integration test) show\nshowpage\n' | \
+    gs -sDEVICE=pdfwrite -sOutputFile=test/fixtures/test.pdf -dNOPAUSE -dBATCH -dQUIET -
+
 COPY test/integration.sh ./test/integration.sh
 RUN chmod +x test/integration.sh
 
