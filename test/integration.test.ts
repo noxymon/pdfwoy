@@ -21,6 +21,19 @@ const CLI = join(__dirname, '../dist/cli.js')
 const FIXTURES_DIR = join(__dirname, 'fixtures')
 const FIXTURE = join(FIXTURES_DIR, 'test.pdf')
 const TMP = join(tmpdir(), `pdftools-test-${Date.now()}`)
+const IS_WIN = process.platform === 'win32'
+const GS_CMD = IS_WIN ? 'gswin64c' : 'gs'
+const PATH_SEP = IS_WIN ? ';' : ':'
+
+// canvas may not be available on Windows (native build can fail)
+// Run a quick jpg --help to see if the command loads without error
+let canvasAvailable = true
+{
+  const r = spawnSync(NODE, [CLI, 'jpg', '--help'], { encoding: 'utf-8' })
+  if (r.status !== 0 || r.stderr?.includes('Cannot find module')) {
+    canvasAvailable = false
+  }
+}
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -78,7 +91,7 @@ beforeAll(() => {
   )
 
   const gs = spawnSync(
-    'gs',
+    GS_CMD,
     ['-sDEVICE=pdfwrite', `-sOutputFile=${FIXTURE}`, '-dNOPAUSE', '-dBATCH', '-dQUIET', psFile],
     { encoding: 'utf-8' },
   )
@@ -118,7 +131,7 @@ describe('basics', () => {
 
 // ── jpg ───────────────────────────────────────────────────────────────────────
 
-describe('jpg', () => {
+describe.skipIf(!canvasAvailable)('jpg', () => {
   it('converts PDF to JPEG and exits 0', () => {
     const out = tmp('jpg-default')
     const r = run(['jpg', FIXTURE, '-o', out])
@@ -222,31 +235,51 @@ describe('startup dep check', () => {
   let noGsPath: string
 
   beforeAll(() => {
-    // Create a fake 'which' that returns failure for 'gs' only
     fakeBin = join(TMP, 'fake-bin')
     mkdirSync(fakeBin, { recursive: true })
-    writeFileSync(
-      join(fakeBin, 'which'),
-      '#!/bin/sh\n[ "$1" = "gs" ] && exit 1\nexec /usr/bin/which "$@"\n',
-    )
-    chmodSync(join(fakeBin, 'which'), 0o755)
-    // Include node's own directory so child processes can find node if needed
+
     const nodeBinDir = dirname(NODE)
-    noGsPath = `${fakeBin}:${nodeBinDir}:/usr/local/bin:/usr/bin:/bin`
+
+    if (IS_WIN) {
+      // On Windows: create a fake `where.cmd` that fails for 'gs' / 'gswin64c'
+      writeFileSync(
+        join(fakeBin, 'where.cmd'),
+        [
+          '@echo off',
+          'if /i "%~1"=="gs" exit /b 1',
+          'if /i "%~1"=="gswin64c" exit /b 1',
+          'if /i "%~1"=="gswin64c.exe" exit /b 1',
+          '%SystemRoot%\\System32\\where.exe %*',
+        ].join('\r\n'),
+      )
+      // Windows PATH uses semicolons; keep System32 so where.cmd can call where.exe
+      noGsPath = [fakeBin, nodeBinDir, 'C:\\Windows\\System32'].join(PATH_SEP)
+    } else {
+      // On Unix: shell script that intercepts `which gs`
+      writeFileSync(
+        join(fakeBin, 'which'),
+        '#!/bin/sh\n[ "$1" = "gs" ] && exit 1\nexec /usr/bin/which "$@"\n',
+      )
+      chmodSync(join(fakeBin, 'which'), 0o755)
+      noGsPath = `${fakeBin}${PATH_SEP}${nodeBinDir}:/usr/local/bin:/usr/bin:/bin`
+    }
   })
 
   it('compress exits 1 when gs not on PATH (non-interactive)', () => {
-    const r = run(['compress', FIXTURE, '-o', '/dev/null'], { PATH: noGsPath })
+    const out = join(TMP, 'dep-check-out.pdf')
+    const r = run(['compress', FIXTURE, '-o', out], { PATH: noGsPath })
     expect(r.status).toBe(1)
   })
 
   it('compress stderr mentions "missing" or "Ghostscript" when gs absent', () => {
-    const r = run(['compress', FIXTURE, '-o', '/dev/null'], { PATH: noGsPath })
+    const out = join(TMP, 'dep-check-out2.pdf')
+    const r = run(['compress', FIXTURE, '-o', out], { PATH: noGsPath })
     const combined = r.stdout + r.stderr
     expect(combined.toLowerCase()).toMatch(/missing|ghostscript/)
   })
 
   it('jpg succeeds with gs hidden (no dep check for jpg)', () => {
+    if (!canvasAvailable) return
     const out = tmp('jpg-no-gs')
     const r = run(['jpg', FIXTURE, '-o', out], { PATH: noGsPath })
     expect(r.status).toBe(0)

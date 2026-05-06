@@ -8,7 +8,12 @@ on:
 
 jobs:
   integration:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    runs-on: ${{ matrix.os }}
 
     steps:
       - uses: actions/checkout@v4
@@ -24,6 +29,7 @@ jobs:
       - name: Get pnpm store path
         id: pnpm-cache
         run: echo "dir=$(pnpm store path)" >> $GITHUB_OUTPUT
+        shell: bash
 
       - uses: actions/cache@v4
         with:
@@ -31,7 +37,8 @@ jobs:
           key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: ${{ runner.os }}-pnpm-
 
-      - name: Install system dependencies
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
@@ -46,10 +53,16 @@ jobs:
             libgif-dev \
             librsvg2-dev
 
+      - name: Install system dependencies (Windows)
+        if: runner.os == 'Windows'
+        run: choco install ghostscript --no-progress -y
+        shell: pwsh
+
       - name: Install Node dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build native modules
+      - name: Build native modules (Linux)
+        if: runner.os == 'Linux'
         run: pnpm rebuild canvas
 
       - name: Build CLI
