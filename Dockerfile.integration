@@ -1,0 +1,36 @@
+FROM node:22-bookworm-slim
+
+# canvas native-module build deps + ghostscript (for compress tests)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ghostscript \
+    python3 \
+    make \
+    g++ \
+    pkg-config \
+    libcairo2-dev \
+    libpango1.0-dev \
+    libjpeg-dev \
+    libgif-dev \
+    librsvg2-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN corepack enable
+
+WORKDIR /app
+
+# Install deps — pnpm-workspace.yaml has ignoredBuiltDependencies so we
+# explicitly rebuild canvas afterwards to get its native binary.
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile && pnpm rebuild canvas
+
+# Build TypeScript
+COPY tsconfig.json tsup.config.ts ./
+COPY src/ ./src/
+RUN pnpm build
+
+# Test fixture and test runner
+COPY test.pdf ./test/fixtures/test.pdf
+COPY test/integration.sh ./test/integration.sh
+RUN chmod +x test/integration.sh
+
+CMD ["bash", "test/integration.sh"]

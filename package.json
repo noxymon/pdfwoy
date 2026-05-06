@@ -1,0 +1,37 @@
+{
+  "name": "pdftools",
+  "version": "0.1.0",
+  "description": "PDF utilities CLI: convert to JPG, compress, and more",
+  "type": "module",
+  "bin": {
+    "pdftools": "./dist/cli.js"
+  },
+  "scripts": {
+    "dev": "tsx src/cli.ts",
+    "build": "tsup",
+    "start": "node dist/cli.js",
+    "test:integration": "docker build -f Dockerfile.integration -t pdftools-integration . && docker run --rm pdftools-integration"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "commander": "^12.1.0",
+    "ora": "^8.1.1",
+    "pdf-to-img": "^4.2.0",
+    "prompts": "^2.4.2",
+    "sharp": "^0.33.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/prompts": "^2.4.9",
+    "@types/sharp": "^0.31.1",
+    "tsup": "^8.1.0",
+    "tsx": "^4.15.0",
+    "typescript": "^5.5.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["sharp", "esbuild", "canvas"]
+  }
+}
