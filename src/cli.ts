@@ -23,7 +23,7 @@ try {
 const program = new Command()
 
 program
-  .name('pdftools')
+  .name('pdfwoy')
   .description('PDF utilities: convert to JPG, compress, and more')
   .version(version)
 

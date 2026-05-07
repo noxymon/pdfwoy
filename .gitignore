@@ -8,3 +8,4 @@ plan.md
 # ignore all PDFs (test fixture is generated at docker build time)
 *.pdf
 test/fixtures/
+.env

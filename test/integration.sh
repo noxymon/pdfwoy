@@ -17,7 +17,7 @@ TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 
 echo ""
-echo "  pdftools integration tests"
+echo "  pdfwoy integration tests"
 echo "  ══════════════════════════"
 
 # ── 1. basics ─────────────────────────────────────────────────────────────────

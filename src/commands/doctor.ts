@@ -11,7 +11,7 @@ export function doctorCommand(): Command {
     .action(() => {
       const info = getPlatformInfo()
 
-      console.log(chalk.bold('\n  pdftools doctor\n'))
+      console.log(chalk.bold('\n  pdfwoy doctor\n'))
 
       const nodeOk = parseInt(process.version.slice(1), 10) >= 20
       console.log(
@@ -37,7 +37,7 @@ export function doctorCommand(): Command {
           gsHint = chalk.dim(`     └─ ${sysPath}`)
         } else {
           gsStatus = chalk.red('✗ missing')
-          gsHint = chalk.dim('     └─ run: pdftools install-deps')
+          gsHint = chalk.dim('     └─ run: pdfwoy install-deps')
         }
       }
 

@@ -22,7 +22,7 @@ export function installDepsCommand(): Command {
       try {
         const gsPath = await installGhostscript()
         log.success(`Ghostscript ready → ${gsPath}`)
-        console.log(chalk.dim('\n  Run `pdftools doctor` to verify.\n'))
+        console.log(chalk.dim('\n  Run `pdfwoy doctor` to verify.\n'))
       } catch (err) {
         if (err instanceof UserError) throw err
         throw new Error(`Installation failed: ${(err as Error).message}`)

@@ -20,7 +20,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const CLI = join(__dirname, '../dist/cli.js')
 const FIXTURES_DIR = join(__dirname, 'fixtures')
 const FIXTURE = join(FIXTURES_DIR, 'test.pdf')
-const TMP = join(tmpdir(), `pdftools-test-${Date.now()}`)
+const TMP = join(tmpdir(), `pdfwoy-test-${Date.now()}`)
 const IS_WIN = process.platform === 'win32'
 const GS_CMD = IS_WIN ? 'gswin64c' : 'gs'
 const PATH_SEP = IS_WIN ? ';' : ':'
@@ -85,7 +85,7 @@ beforeAll(() => {
       '%!PS',
       '/Helvetica findfont 14 scalefont setfont',
       '72 720 moveto',
-      '(pdftools integration test) show',
+      '(pdfwoy integration test) show',
       'showpage',
     ].join('\n'),
   )

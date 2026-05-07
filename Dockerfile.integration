@@ -30,7 +30,7 @@ RUN pnpm build
 
 # Generate a minimal test fixture PDF from PostScript
 RUN mkdir -p test/fixtures && \
-    printf '%%!PS\n/Helvetica findfont 14 scalefont setfont\n72 720 moveto\n(pdftools integration test) show\nshowpage\n' | \
+    printf '%%!PS\n/Helvetica findfont 14 scalefont setfont\n72 720 moveto\n(pdfwoy integration test) show\nshowpage\n' | \
     gs -sDEVICE=pdfwrite -sOutputFile=test/fixtures/test.pdf -dNOPAUSE -dBATCH -dQUIET -
 
 COPY test/integration.sh ./test/integration.sh

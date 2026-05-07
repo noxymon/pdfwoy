@@ -90,7 +90,7 @@ export async function resolveGhostscript(opts: ResolveOptions = {}): Promise<str
   // 3. Not found
   if (!opts.autoInstall) {
     throw new UserError(
-      `Ghostscript not found.\n\nInstall it:\n${info.installHint}\n\nOr run: pdftools install-deps`,
+      `Ghostscript not found.\n\nInstall it:\n${info.installHint}\n\nOr run: pdfwoy install-deps`,
     )
   }
 

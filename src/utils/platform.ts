@@ -24,7 +24,7 @@ export function getPlatformInfo(): PlatformInfo {
     ['x64', 'arm64'].includes(arch)
 
   const gsBinaryName = platform === 'win32' ? 'gswin64c.exe' : 'gs'
-  const cacheDir = join(homedir(), '.pdftools')
+  const cacheDir = join(homedir(), '.pdfwoy')
   const binDir = join(cacheDir, 'bin')
   const cachedGsPath = join(binDir, gsBinaryName)
 

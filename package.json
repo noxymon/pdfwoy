@@ -1,17 +1,17 @@
 {
-  "name": "pdftools",
+  "name": "pdfwoy",
   "version": "0.1.0",
   "description": "PDF utilities CLI: convert to JPG, compress, and more",
   "type": "module",
   "bin": {
-    "pdftools": "./dist/cli.js"
+    "pdfwoy": "./dist/cli.js"
   },
   "scripts": {
     "dev": "tsx src/cli.ts",
     "build": "tsup",
     "start": "node dist/cli.js",
     "test:integration": "vitest run test/integration.test.ts",
-    "test:integration:docker": "docker build -f Dockerfile.integration -t pdftools-integration . && docker run --rm pdftools-integration"
+    "test:integration:docker": "docker build -f Dockerfile.integration -t pdfwoy-integration . && docker run --rm pdfwoy-integration"
   },
   "engines": {
     "node": ">=20"
