@@ -1,6 +1,6 @@
 {
   "name": "pdfwoy",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "PDF utilities CLI: convert to JPG, compress, and more",
   "type": "module",
   "bin": {
