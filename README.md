@@ -16,7 +16,7 @@ Anything you put through one of those sites is, by definition, leaving your comp
 npm install -g pdfwoy
 ```
 
-Requires Node.js 20+. The `compress` command additionally needs [Ghostscript](https://www.ghostscript.com/) on PATH; running `pdfwoy install-deps` will set it up for you (Homebrew on macOS, apt/dnf/yum on Linux, official Artifex installer on Windows).
+Requires Node.js 20+. The `compress` command additionally needs [Ghostscript](https://www.ghostscript.com/) on PATH. On macOS and Linux, `pdfwoy install-deps` will set it up for you (Homebrew / apt / dnf / yum). On Windows, install it yourself — download the installer from [Artifex's releases](https://github.com/ArtifexSoftware/ghostpdl-downloads/releases), or use `scoop install ghostscript` / `choco install ghostscript`. (The Artifex installer ignores silent-install flags, so we can't drive it for you.)
 
 Verify your setup:
 

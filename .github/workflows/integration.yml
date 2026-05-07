@@ -76,11 +76,14 @@ jobs:
       - name: Run integration tests
         run: pnpm test:integration
 
+  # Windows is intentionally excluded: Artifex's Ghostscript NSIS installer
+  # ignores /S and forces a GUI wizard, so pdfwoy can't auto-install on
+  # Windows. Users get a manual-install message there instead.
   install-deps:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest]
 
     runs-on: ${{ matrix.os }}
 

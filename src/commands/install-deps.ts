@@ -17,6 +17,12 @@ export function installDepsCommand(): Command {
         )
       }
 
+      if (!info.canAutoInstall) {
+        throw new UserError(
+          `Auto-install is not supported on ${info.platform}.\n\n${info.installHint}`,
+        )
+      }
+
       console.log(chalk.bold('\n  Installing dependencies…\n'))
 
       try {

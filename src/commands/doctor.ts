@@ -37,7 +37,9 @@ export function doctorCommand(): Command {
           gsHint = chalk.dim(`     └─ ${sysPath}`)
         } else {
           gsStatus = chalk.red('✗ missing')
-          gsHint = chalk.dim('     └─ run: pdfwoy install-deps')
+          gsHint = info.canAutoInstall
+            ? chalk.dim('     └─ run: pdfwoy install-deps')
+            : chalk.dim(`     └─ install: ${info.installHint.split('\n')[1]?.trim() ?? info.installHint}`)
         }
       }
 

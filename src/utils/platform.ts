@@ -11,10 +11,10 @@ export interface PlatformInfo {
   gsBinaryName: string
   cacheDir: string
   binDir: string
-  gsInstallDir: string
   cachedGsPath: string
   installHint: string
   packageManagerCmd: string | null
+  canAutoInstall: boolean
 }
 
 export function getPlatformInfo(): PlatformInfo {
@@ -27,9 +27,7 @@ export function getPlatformInfo(): PlatformInfo {
   const gsBinaryName = platform === 'win32' ? 'gswin64c.exe' : 'gs'
   const cacheDir = join(homedir(), '.pdfwoy')
   const binDir = join(cacheDir, 'bin')
-  const gsInstallDir = platform === 'win32' ? join(cacheDir, 'ghostscript') : binDir
-  const cachedGsPath =
-    platform === 'win32' ? join(gsInstallDir, 'bin', gsBinaryName) : join(binDir, gsBinaryName)
+  const cachedGsPath = join(binDir, gsBinaryName)
 
   return {
     platform,
@@ -38,10 +36,12 @@ export function getPlatformInfo(): PlatformInfo {
     gsBinaryName,
     cacheDir,
     binDir,
-    gsInstallDir,
     cachedGsPath,
     installHint: getInstallHint(platform),
     packageManagerCmd: getPackageManagerCmd(platform),
+    // Windows is excluded: Artifex's NSIS installer ignores /S and forces a GUI
+    // wizard, so we can't drive it headlessly. Users install it manually.
+    canAutoInstall: platform === 'darwin' || platform === 'linux',
   }
 }
 
@@ -56,7 +56,14 @@ function getInstallHint(platform: string): string {
         'sudo yum install ghostscript       # CentOS',
       ].join('\n')
     case 'win32':
-      return 'Download installer: https://github.com/ArtifexSoftware/ghostpdl-downloads/releases'
+      return [
+        'Download and run the installer:',
+        '  https://github.com/ArtifexSoftware/ghostpdl-downloads/releases',
+        '',
+        'Or use a package manager:',
+        '  scoop install ghostscript',
+        '  choco install ghostscript',
+      ].join('\n')
     default:
       return 'https://www.ghostscript.com/releases/gsdnld.html'
   }
@@ -66,8 +73,6 @@ function getPackageManagerCmd(platform: string): string | null {
   switch (platform) {
     case 'darwin':
       return 'brew install ghostscript'
-    case 'win32':
-      return 'download Ghostscript installer from github.com/ArtifexSoftware'
     default:
       return null
   }
