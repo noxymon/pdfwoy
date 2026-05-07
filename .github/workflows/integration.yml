@@ -75,3 +75,75 @@ jobs:
 
       - name: Run integration tests
         run: pnpm test:integration
+
+  install-deps:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - name: Get pnpm store path
+        id: pnpm-cache
+        run: echo "dir=$(pnpm store path)" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.dir }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-
+
+      # Canvas/sharp native deps so the bundled CLI can load.
+      # Ghostscript itself is intentionally NOT preinstalled here —
+      # installing it is what we're testing.
+      - name: Install canvas system deps (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            python3 make g++ pkg-config \
+            libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
+
+      - name: Install canvas system deps (macOS)
+        if: runner.os == 'macOS'
+        run: brew install pkg-config cairo pango libpng jpeg giflib librsvg pixman
+
+      - name: Install Node dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build native modules (Linux)
+        if: runner.os == 'Linux'
+        run: pnpm rebuild canvas
+
+      - name: Build CLI
+        run: pnpm build
+
+      - name: Run pdfwoy install-deps
+        run: node dist/cli.js install-deps --yes
+
+      - name: Verify Ghostscript was installed and runs
+        shell: bash
+        run: |
+          case "$RUNNER_OS" in
+            Linux|macOS)
+              gs --version
+              ;;
+            Windows)
+              gs="$HOME/.pdfwoy/ghostscript/bin/gswin64c.exe"
+              test -f "$gs" || { echo "Expected $gs to exist"; exit 1; }
+              "$gs" --version
+              ;;
+          esac

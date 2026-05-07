@@ -11,6 +11,7 @@ export interface PlatformInfo {
   gsBinaryName: string
   cacheDir: string
   binDir: string
+  gsInstallDir: string
   cachedGsPath: string
   installHint: string
   packageManagerCmd: string | null
@@ -21,12 +22,14 @@ export function getPlatformInfo(): PlatformInfo {
   const arch = process.arch
   const supported =
     ['darwin', 'linux', 'win32'].includes(platform) &&
-    ['x64', 'arm64'].includes(arch)
+    ['x64', 'arm64', 'ia32'].includes(arch)
 
   const gsBinaryName = platform === 'win32' ? 'gswin64c.exe' : 'gs'
   const cacheDir = join(homedir(), '.pdfwoy')
   const binDir = join(cacheDir, 'bin')
-  const cachedGsPath = join(binDir, gsBinaryName)
+  const gsInstallDir = platform === 'win32' ? join(cacheDir, 'ghostscript') : binDir
+  const cachedGsPath =
+    platform === 'win32' ? join(gsInstallDir, 'bin', gsBinaryName) : join(binDir, gsBinaryName)
 
   return {
     platform,
@@ -35,6 +38,7 @@ export function getPlatformInfo(): PlatformInfo {
     gsBinaryName,
     cacheDir,
     binDir,
+    gsInstallDir,
     cachedGsPath,
     installHint: getInstallHint(platform),
     packageManagerCmd: getPackageManagerCmd(platform),
@@ -52,10 +56,7 @@ function getInstallHint(platform: string): string {
         'sudo yum install ghostscript       # CentOS',
       ].join('\n')
     case 'win32':
-      return [
-        'winget install ArtifexSoftware.GhostScript',
-        '# or: https://www.ghostscript.com/releases/gsdnld.html',
-      ].join('\n')
+      return 'Download installer: https://github.com/ArtifexSoftware/ghostpdl-downloads/releases'
     default:
       return 'https://www.ghostscript.com/releases/gsdnld.html'
   }
@@ -66,7 +67,7 @@ function getPackageManagerCmd(platform: string): string | null {
     case 'darwin':
       return 'brew install ghostscript'
     case 'win32':
-      return 'winget install ArtifexSoftware.GhostScript --silent'
+      return 'download Ghostscript installer from github.com/ArtifexSoftware'
     default:
       return null
   }

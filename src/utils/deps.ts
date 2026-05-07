@@ -1,11 +1,28 @@
 import { execSync, spawn } from 'node:child_process'
-import { mkdirSync } from 'node:fs'
+import { createReadStream, createWriteStream, mkdirSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
+import { get as httpsGet } from 'node:https'
+import { createHash } from 'node:crypto'
 import chalk from 'chalk'
 import prompts from 'prompts'
 import { getPlatformInfo } from './platform.js'
 import { fileExists, isExecutable } from './fs.js'
 import { log } from './logger.js'
+
+const GS_VERSION = '10.07.0'
+const GS_RELEASE_TAG = 'gs10070'
+const GS_INSTALLERS = {
+  w32: {
+    file: 'gs10070w32.exe',
+    sha512:
+      '8472a405b7ffad52a470e44003c8fcb43b36cced1d385048b6849f6f6b6f802e0a645ebb353fcb908d19cf75c0c4de31de5189c48c101ba030f2fd1ba31f0d64',
+  },
+  w64: {
+    file: 'gs10070w64.exe',
+    sha512:
+      'ccee91cc0a7ae7b9413e7d3b4354a49530eae2ebb8e968d8af9115aaa02f6cea2efb10a86d6fc43597b50a18d0ba4c7bfa49a551ea485cab5f8ca26009be3f8b',
+  },
+} as const
 
 // Commands that require Ghostscript to be installed
 const GS_REQUIRED_COMMANDS = new Set(['compress'])
@@ -38,12 +55,17 @@ export async function startupDepCheck(commandName: string): Promise<void> {
   const installCmd = info.packageManagerCmd ?? info.installHint.split('\n')[0]
   const interactive = process.stdin.isTTY
 
+  const promptMsg =
+    info.platform === 'win32'
+      ? `Download and install Ghostscript ${GS_VERSION} from Artifex (${pickWindowsInstaller(info.arch).file}, ~65 MB)?`
+      : `Install Ghostscript via "${installCmd}"?`
+
   let shouldInstall = false
   if (interactive) {
     const response = await prompts({
       type: 'confirm',
       name: 'confirm',
-      message: `Install Ghostscript via "${installCmd}"?`,
+      message: promptMsg,
       initial: true,
     })
     // prompts returns {} if user ctrl-c
@@ -138,7 +160,7 @@ export async function installGhostscript(): Promise<string> {
     case 'linux':
       return installViaLinuxPackageManager()
     case 'win32':
-      return installViaWinget()
+      return installViaArtifexInstaller()
     default:
       throw new UserError(`Auto-install unsupported on ${info.platform}.\n${info.installHint}`)
   }
@@ -179,17 +201,113 @@ async function installViaLinuxPackageManager(): Promise<string> {
   )
 }
 
-async function installViaWinget(): Promise<string> {
-  if (!findOnPath('winget')) {
+function pickWindowsInstaller(arch: string): (typeof GS_INSTALLERS)[keyof typeof GS_INSTALLERS] {
+  // arm64 has no native Artifex installer; the x64 build runs under emulation.
+  return arch === 'ia32' ? GS_INSTALLERS.w32 : GS_INSTALLERS.w64
+}
+
+async function installViaArtifexInstaller(): Promise<string> {
+  const info = getPlatformInfo()
+  const installer = pickWindowsInstaller(info.arch)
+  const url = `https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/${GS_RELEASE_TAG}/${installer.file}`
+  const downloadPath = join(info.binDir, installer.file)
+
+  log.info(`Downloading Ghostscript ${GS_VERSION} (${installer.file})…`)
+  try {
+    await downloadFile(url, downloadPath)
+  } catch (err) {
     throw new UserError(
-      'winget not found. Download Ghostscript from:\nhttps://www.ghostscript.com/releases/gsdnld.html',
+      `Failed to download Ghostscript installer.\n${(err as Error).message}\n\nManual install:\n${info.installHint}`,
     )
   }
-  log.info('Installing Ghostscript via winget…')
-  await spawnCommand('winget', ['install', 'ArtifexSoftware.GhostScript', '--silent'])
-  const path = findOnPath('gswin64c.exe')
-  if (!path) throw new Error('winget install succeeded but gswin64c.exe not found on PATH')
-  return path
+
+  log.info('Verifying download…')
+  const actualHash = await sha512File(downloadPath)
+  if (actualHash !== installer.sha512) {
+    safeUnlink(downloadPath)
+    throw new UserError(
+      `Ghostscript installer hash mismatch — refusing to run.\n  expected: ${installer.sha512}\n  actual:   ${actualHash}\n\nManual install:\n${info.installHint}`,
+    )
+  }
+
+  log.info(`Running installer (silent) → ${info.gsInstallDir}`)
+  // NSIS: /S = silent, /D=<path> must be the last argument and unquoted.
+  // windowsVerbatimArguments prevents Node from quoting the path.
+  await runInstaller(downloadPath, ['/S', `/D=${info.gsInstallDir}`])
+  safeUnlink(downloadPath)
+
+  if (!fileExists(info.cachedGsPath)) {
+    throw new Error(
+      `Installer finished but ${info.gsBinaryName} not found at ${info.cachedGsPath}.\nManual install:\n${info.installHint}`,
+    )
+  }
+  return info.cachedGsPath
+}
+
+function downloadFile(url: string, dest: string, redirectsLeft = 5): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const req = httpsGet(url, (res) => {
+      const status = res.statusCode ?? 0
+      if (status >= 300 && status < 400 && res.headers.location) {
+        res.resume()
+        if (redirectsLeft <= 0) {
+          reject(new Error('Too many redirects'))
+          return
+        }
+        downloadFile(res.headers.location, dest, redirectsLeft - 1).then(resolve, reject)
+        return
+      }
+      if (status !== 200) {
+        res.resume()
+        reject(new Error(`HTTP ${status} for ${url}`))
+        return
+      }
+      const file = createWriteStream(dest)
+      res.pipe(file)
+      file.on('finish', () => file.close((err) => (err ? reject(err) : resolve())))
+      file.on('error', (err) => {
+        safeUnlink(dest)
+        reject(err)
+      })
+      res.on('error', (err) => {
+        safeUnlink(dest)
+        reject(err)
+      })
+    })
+    req.on('error', reject)
+  })
+}
+
+function sha512File(path: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const hash = createHash('sha512')
+    const rs = createReadStream(path)
+    rs.on('data', (chunk) => hash.update(chunk))
+    rs.on('end', () => resolve(hash.digest('hex')))
+    rs.on('error', reject)
+  })
+}
+
+function runInstaller(exe: string, args: string[]): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const proc = spawn(exe, args, {
+      stdio: 'inherit',
+      windowsVerbatimArguments: true,
+    })
+    proc.on('close', (code) => {
+      if (code === 0) resolve()
+      else reject(new Error(`Installer exited with code ${code}`))
+    })
+    proc.on('error', reject)
+  })
+}
+
+function safeUnlink(path: string): void {
+  try {
+    rmSync(path, { force: true })
+  } catch {
+    // ignore
+  }
 }
 
 function spawnCommand(cmd: string, args: string[]): Promise<void> {
