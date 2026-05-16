@@ -119,6 +119,7 @@ describe('basics', () => {
     expect(r.status).toBe(0)
     expect(r.stdout).toContain('jpg')
     expect(r.stdout).toContain('compress')
+    expect(r.stdout).toContain('merge')
     expect(r.stdout).toContain('doctor')
     expect(r.stdout).toContain('install-deps')
   })
@@ -198,6 +199,30 @@ describe('compress', () => {
       expect(r.status).toBe(0)
     },
   )
+})
+
+// ── merge ─────────────────────────────────────────────────────────────────────
+
+describe('merge', () => {
+  it('merges two PDFs and exits 0', () => {
+    const out = join(TMP, 'merged.pdf')
+    // Use the same fixture twice for simplicity
+    const r = run(['merge', FIXTURE, FIXTURE, '-o', out])
+    expect(r.status).toBe(0)
+    expect(existsSync(out)).toBe(true)
+  })
+
+  it('output is a valid PDF (starts with %PDF-)', () => {
+    const out = join(TMP, 'merged-header.pdf')
+    run(['merge', FIXTURE, FIXTURE, '-o', out])
+    expect(pdfHeader(out)).toBe('%PDF-')
+  })
+
+  it('merging 3 files exits 0', () => {
+    const out = join(TMP, 'merged-3.pdf')
+    const r = run(['merge', FIXTURE, FIXTURE, FIXTURE, '-o', out])
+    expect(r.status).toBe(0)
+  })
 })
 
 // ── error handling ────────────────────────────────────────────────────────────
