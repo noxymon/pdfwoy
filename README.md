@@ -79,6 +79,26 @@ Example:
 pdfwoy compress contract.pdf -l screen -o contract.small.pdf
 ```
 
+### Merge multiple PDFs
+
+```bash
+pdfwoy merge file1.pdf file2.pdf [file3.pdf...] -o output.pdf
+```
+
+Combines multiple PDF files into one, in the order they are provided.
+
+Options:
+
+| Flag | Default | Description |
+|---|---|---|
+| `-o, --out <file>` | (required) | output path for the merged PDF |
+
+Example:
+
+```bash
+pdfwoy merge cover.pdf chapter1.pdf chapter2.pdf -o full-book.pdf
+```
+
 ### Doctor
 
 ```bash
@@ -98,6 +118,6 @@ Installs Ghostscript using your platform's package manager. Use `--yes` to skip 
 ## How it works (briefly)
 
 - **jpg** — uses [`pdf-to-img`](https://www.npmjs.com/package/pdf-to-img) to rasterize pages and [`sharp`](https://sharp.pixelplumbing.com/) to encode JPEGs.
-- **compress** — shells out to Ghostscript with one of its standard `PDFSETTINGS` presets.
+- **compress & merge** — shells out to Ghostscript to process and output PDF files.
 
 Everything runs in your terminal. No network calls, no upload, no telemetry.
