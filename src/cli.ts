@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url'
 import chalk from 'chalk'
 import { pdfToJpgCommand } from './commands/pdf-to-jpg.js'
 import { compressCommand } from './commands/compress.js'
+import { mergeCommand } from './commands/merge.js'
 import { doctorCommand } from './commands/doctor.js'
 import { installDepsCommand } from './commands/install-deps.js'
 import { UserError, startupDepCheck } from './utils/deps.js'
@@ -29,6 +30,7 @@ program
 
 program.addCommand(pdfToJpgCommand())
 program.addCommand(compressCommand())
+program.addCommand(mergeCommand())
 program.addCommand(doctorCommand())
 program.addCommand(installDepsCommand())
 
