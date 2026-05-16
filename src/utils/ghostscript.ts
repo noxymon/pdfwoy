@@ -2,25 +2,33 @@ import { spawn } from 'node:child_process'
 
 export type CompressLevel = 'screen' | 'ebook' | 'printer' | 'prepress'
 
-export interface CompressOptions {
+export interface GhostscriptOptions {
   gsPath: string
-  input: string
+  input: string | string[]
   output: string
-  level: CompressLevel
+  level?: CompressLevel
 }
 
-export function runGhostscript(opts: CompressOptions): Promise<void> {
+export function runGhostscript(opts: GhostscriptOptions): Promise<void> {
   return new Promise((resolve, reject) => {
     const args = [
       '-sDEVICE=pdfwrite',
       '-dCompatibilityLevel=1.4',
-      `-dPDFSETTINGS=/${opts.level}`,
       '-dNOPAUSE',
       '-dQUIET',
       '-dBATCH',
       `-sOutputFile=${opts.output}`,
-      opts.input,
     ]
+
+    if (opts.level) {
+      args.push(`-dPDFSETTINGS=/${opts.level}`)
+    }
+
+    if (Array.isArray(opts.input)) {
+      args.push(...opts.input)
+    } else {
+      args.push(opts.input)
+    }
 
     const proc = spawn(opts.gsPath, args, { stdio: ['ignore', 'ignore', 'pipe'] })
     const errChunks: Buffer[] = []
